@@ -1,7 +1,9 @@
 fastapi
+gunicorn
 uvicorn
 ultralytics
 opencv-python
 numpy
 SpeechRecognition
 soundfile
+
