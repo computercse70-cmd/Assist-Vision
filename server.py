@@ -46,7 +46,7 @@ class PiperTTS:
             [
                 "./piper/piper",
                 "--model",
-                "./piper/hi_IN-priyamvada-medium.onnx",
+                "./piper/models/hi_IN-priyamvada-medium.onnx",
                 "--output_file",
                 "-"
             ],
@@ -137,6 +137,22 @@ def gpt_refine(text, context):
         return r.choices[0].message.content.strip()
     except:
         return context
+    
+def speech_to_text(audio_bytes: bytes) -> str:
+    try:
+        # OpenAI expects a file-like object
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = "audio.wav"  # important!
+
+        transcript = openai_client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+            language="hi"
+        )
+        return transcript.text.strip()
+    except Exception as e:
+        print("STT error:", e)
+        return ""
 
 
 # ---------------- API ----------------
@@ -155,9 +171,15 @@ async def assist(
     detections = detect_objects(image)
     distances = map_distances(detections, ultrasonic_distance, image.shape[1])
 
+    audio_bytes = await audio.read()
+    user_text = speech_to_text(audio_bytes)
+
+    if not user_text:
+        user_text = "सामने क्या है?"
+
     # Decide
     base_msg = decide_message(detections, distances)
-    final_msg = gpt_refine("Describe surroundings", base_msg)
+    final_msg = gpt_refine(user_text, base_msg)
 
     # TTS
     audio_out = tts.speak(final_msg)
